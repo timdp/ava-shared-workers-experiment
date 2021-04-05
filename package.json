@@ -1,0 +1,41 @@
+{
+  "name": "ava-shared-workers-experiment",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "ava",
+    "debug": "DEBUG=\"browsertest:*\" DEBUG_COLORS=yes SHOW_BROWSER=1 ava --verbose",
+    "test": "eslint \"**/*.js\"",
+    "format": "prettier-eslint --write \"$PWD/**/*.js\""
+  },
+  "dependencies": {
+    "ava": "^4.0.0-alpha.1",
+    "chrome-location": "^1.2.1",
+    "debug": "^4.3.1",
+    "expressions-js": "^0.1.12",
+    "fastify": "^3.14.1",
+    "firefox-location": "^1.0.2",
+    "globby": "^11.0.3",
+    "micromatch": "^4.0.2",
+    "mime-types": "^2.1.30",
+    "ngrok": "^4.0.0",
+    "p-defer": "^3.0.0",
+    "puppeteer-core": "^8.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^7.23.0",
+    "eslint-config-standard": "^16.0.2",
+    "eslint-plugin-import": "^2.22.1",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^4.3.1",
+    "eslint-plugin-simple-import-sort": "^7.0.0",
+    "husky": "^6.0.0",
+    "lint-staged": "^10.5.4",
+    "prettier-eslint-cli": "^5.0.1"
+  },
+  "lint-staged": {
+    "*.js": [
+      "prettier-eslint --write"
+    ]
+  }
+}

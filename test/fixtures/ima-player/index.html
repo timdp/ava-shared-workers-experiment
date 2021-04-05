@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background: black;
+    }
+
+    #mainContainer,
+    #content,
+    #adContainer,
+    #contentElement {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="mainContainer">
+    <div id="content">
+      <video id="contentElement"></video>
+    </div>
+    <div id="adContainer"></div>
+  </div>
+  <script src="https://imasdk.googleapis.com/js/sdkloader/ima3_debug.js"></script>
+  <script src="player.js"></script>
+</body>
+
+</html>

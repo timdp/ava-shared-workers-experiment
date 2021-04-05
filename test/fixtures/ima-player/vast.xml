@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VAST version="2.0">
+  <Ad id="default">
+    <Wrapper>
+      <AdSystem>default</AdSystem>
+      <VASTAdTagURI><![CDATA[{{ tagUrl }}]]></VASTAdTagURI>
+      <Error><![CDATA[{{ dirUrl }}/error?code=[ERRORCODE]]]></Error>
+      <Impression><![CDATA[{{ dirUrl }}/impression]]></Impression>
+    </Wrapper>
+  </Ad>
+</VAST>

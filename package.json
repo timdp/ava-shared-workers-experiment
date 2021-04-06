@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "start": "ava",
-    "debug": "DEBUG=\"browsertest:*\" DEBUG_COLORS=yes SHOW_BROWSER=1 ava --verbose",
+    "debug": "DEBUG=\"browsertest:*\" DEBUG_COLORS=yes SHOW_BROWSER=1 ava --verbose --serial",
     "test": "eslint \"**/*.js\"",
     "format": "prettier-eslint --write \"$PWD/**/*.js\""
   },

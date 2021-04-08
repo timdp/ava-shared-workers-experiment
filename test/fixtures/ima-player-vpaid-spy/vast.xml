@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VAST version="2.0">
+  <Ad>
+    <InLine>
+      <Error>
+        <![CDATA[{{ dirUrl }}/track?data={"type":"vast-error","payload":{"code":"[ERRORCODE]"}}]]>
+      </Error>
+      <Impression>
+        <![CDATA[{{ dirUrl }}/track?data={"type":"vast-impression"}]]>
+      </Impression>
+      <Creatives>
+        <Creative>
+          <Linear>
+            <Duration>00:00:30</Duration>
+            <AdParameters>
+              <![CDATA[{{ adParameters }}]]>
+            </AdParameters>
+            <MediaFiles>
+              <MediaFile width="16" height="9" type="application/javascript" apiFramework="VPAID" delivery="progressive">
+                <![CDATA[{{ dirUrl }}/vpaid-spy.js#origin={{ encodeURIComponent(dirUrl) }}&vpaid={{ encodeURIComponent(vpaidUrl) }}&debug={{ encodeURIComponent(debug) }}]]>
+              </MediaFile>
+            </MediaFiles>
+          </Linear>
+        </Creative>
+      </Creatives>
+    </InLine>
+  </Ad>
+</VAST>

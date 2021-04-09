@@ -4,7 +4,6 @@
   const ima = google.ima
   const {
     AdDisplayContainer,
-    AdEvent,
     AdErrorEvent,
     AdsLoader,
     AdsManagerLoadedEvent,
@@ -29,14 +28,6 @@
     adsManager = null
   }
 
-  const onAdImpressionEvent = () => {
-    if (done) {
-      return
-    }
-    done = true
-    destroyAdsManager()
-  }
-
   const onAdError = () => {
     if (done) {
       return
@@ -57,7 +48,6 @@
       videoContent,
       adsRenderingSettings
     )
-    adsManager.addEventListener(AdEvent.Type.IMPRESSION, onAdImpressionEvent)
     adsManager.addEventListener(AdErrorEvent.Type.AD_ERROR, onAdErrorEvent)
 
     adDisplayContainer.initialize()

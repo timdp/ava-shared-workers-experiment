@@ -108,7 +108,7 @@
     log('Proxying events')
     for (const name of EVENTS) {
       guestVpaidAd.subscribe((...args) => {
-        track('guest-event', { name, args })
+        track('vpaid-event', { name, args })
         const subs = subscribers[name]
         if (subs == null) {
           log(`Not proxying ${name} event, no subscribers`)
@@ -146,6 +146,14 @@
     document.body.appendChild(script)
   })
 
+  const proxyCall = (name, args) => {
+    log(`Proxying ${name}(${args.map(arg => String(arg)).join(', ')}) call`)
+    const result = guestVpaidAd[name]()
+    log(`Proxied ${name}() call, got ${result}`)
+    track('vpaid-call', { name, args: [], result })
+    return result
+  }
+
   const hostVpaidAd = {
     handshakeVersion: ver => ver,
     subscribe: (fn, event, scope) => {
@@ -169,18 +177,15 @@
         log(`Not proxying setAdVolume(${volume}) call, guest not available`)
         return
       }
-      log(`Proxying setAdVolume(${volume}) call`)
-      guestVpaidAd.setAdVolume(volume)
+      proxyCall('setAdVolume', [volume])
     }
   }
 
   for (const name of METHODS) {
     hostVpaidAd[name] = (...args) => {
       log(`Scheduling ${name}()`)
-      track('host-call', { name, args })
       loading.then(() => {
-        log(`Calling ${name}()`)
-        guestVpaidAd[name](...args)
+        proxyCall(name, args)
       })
     }
   }
@@ -192,10 +197,7 @@
         log(`Not proxying ${fn}() call, returning default ${defaultValue}`)
         return defaultValue
       }
-      log(`Proxying ${fn}() call`)
-      const res = guestVpaidAd[fn]()
-      log(`Proxied ${fn}() call, got ${res}`)
-      return res
+      return proxyCall(fn, [])
     }
   }
 

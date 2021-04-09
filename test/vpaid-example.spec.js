@@ -3,7 +3,6 @@ const {
   filter,
   take,
   map,
-  share,
   skip,
   delay,
   tap,
@@ -32,8 +31,7 @@ const receiveTracking = (t, dir) =>
           date = reqDate
         }
         return { date, type, payload }
-      }),
-      share()
+      })
     )
 
 const proxyLogs = tracking$ =>
@@ -74,8 +72,7 @@ test('VPAID unit dispatches exactly one VPAID AdImpression', async t => {
 
   const impressions$ = tracking$.pipe(
     ofType('guest-event'),
-    filter(({ payload: { name } }) => name === 'AdImpression'),
-    share()
+    filter(({ payload: { name } }) => name === 'AdImpression')
   )
   const receivingDelayedFirstImpression = impressions$
     .pipe(take(1), delay(waitTime))

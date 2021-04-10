@@ -25,12 +25,9 @@ test('IMA SDK loads VAST tag and dispatches VAST impression', async t => {
   await browser.openPage(t, {
     url: dir.getFileUrl('index.html')
   })
-  await Promise.race([
-    receivingImpression.then(() => {
-      t.pass()
-    }),
-    receivingError.then(code => {
-      t.fail(`Error tracker fired: ${code}`)
-    })
+  const errorMessage = await Promise.race([
+    receivingImpression.then(() => false),
+    receivingError.then(code => `Error tracker fired: ${code}`)
   ])
+  t.false(errorMessage)
 })

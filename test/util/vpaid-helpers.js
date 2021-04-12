@@ -70,9 +70,7 @@ const setUpVpaidTest = async (t, vpaidUrl, adParameters) => {
 const receiveEvents = (tracking$, type) => tracking$.pipe(ofType(type))
 
 const receiveEvent = (tracking$, type) =>
-  receiveEvents(tracking$, type)
-    .pipe(take(1))
-    .toPromise()
+  receiveEvents(tracking$, type).pipe(take(1))
 
 const receiveVpaidEvents = (tracking$, eventName) =>
   receiveEvents(tracking$, 'vpaid-event').pipe(
@@ -80,9 +78,7 @@ const receiveVpaidEvents = (tracking$, eventName) =>
   )
 
 const receiveVpaidEvent = (tracking$, eventName) =>
-  receiveVpaidEvents(tracking$, eventName)
-    .pipe(take(1))
-    .toPromise()
+  receiveVpaidEvents(tracking$, eventName).pipe(take(1))
 
 const receiveVpaidCalls = (tracking$, methodName) =>
   receiveEvents(tracking$, 'vpaid-call').pipe(
@@ -90,16 +86,12 @@ const receiveVpaidCalls = (tracking$, methodName) =>
   )
 
 const receiveVpaidCall = (tracking$, methodName) =>
-  receiveVpaidCalls(tracking$, methodName)
-    .pipe(take(1))
-    .toPromise()
+  receiveVpaidCalls(tracking$, methodName).pipe(take(1))
 
-const receiveVastError = async tracking$ => {
-  const {
-    payload: { code }
-  } = await receiveEvent(tracking$, 'vast-error')
-  return code
-}
+const receiveVastError = tracking$ =>
+  receiveEvent(tracking$, 'vast-error').pipe(
+    map(({ payload: { code } }) => code)
+  )
 
 module.exports = {
   setUpVpaidTest,

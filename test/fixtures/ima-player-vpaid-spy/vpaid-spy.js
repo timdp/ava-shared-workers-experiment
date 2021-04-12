@@ -111,10 +111,14 @@
         track('vpaid-event', { name, args })
         const subs = subscribers[name]
         if (subs == null) {
-          log(`Not proxying ${name} event, no subscribers`)
+          if (name !== 'AdRemainingTimeChange') {
+            log(`Not proxying ${name} event, no subscribers`)
+          }
           return
         }
-        log(`Proxying ${name} event to ${subs.length} subscriber(s)`)
+        if (name !== 'AdRemainingTimeChange') {
+          log(`Proxying ${name} event to ${subs.length} subscriber(s)`)
+        }
         for (const { fn, scope } of subs) {
           fn.apply(scope, args)
         }
@@ -147,9 +151,13 @@
   })
 
   const proxyCall = (name, args) => {
-    log(`Proxying ${name}(${args.map(arg => String(arg)).join(', ')}) call`)
+    if (name !== 'getAdRemainingTime') {
+      log(`Proxying ${name}(${args.map(arg => String(arg)).join(', ')}) call`)
+    }
     const result = guestVpaidAd[name]()
-    log(`Proxied ${name}() call, got ${result}`)
+    if (name !== 'getAdRemainingTime') {
+      log(`Proxied ${name}() call, got ${result}`)
+    }
     track('vpaid-call', { name, args: [], result })
     return result
   }
@@ -194,7 +202,9 @@
     const fn = 'getAd' + name
     hostVpaidAd[fn] = () => {
       if (guestVpaidAd == null) {
-        log(`Not proxying ${fn}() call, returning default ${defaultValue}`)
+        if (fn !== 'getAdRemainingTime') {
+          log(`Not proxying ${fn}() call, returning default ${defaultValue}`)
+        }
         return defaultValue
       }
       return proxyCall(fn, [])

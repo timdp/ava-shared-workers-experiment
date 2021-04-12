@@ -1,4 +1,5 @@
 const debug = require('debug')('browsertest:test:vpaid')
+const { defer: _defer, from: _from } = require('rxjs')
 const { filter, ignoreElements, map, take, tap } = require('rxjs/operators')
 const browser = require('../../lib/browser')
 const httpd = require('../../lib/httpd')
@@ -59,11 +60,13 @@ const setUpVpaidTest = async (t, vpaidUrl, adParameters) => {
       url: dir.getFileUrl('index.html')
     })
   }
+  const pageOpen$ = _defer(() => _from(openPage()))
   return {
-    teardown$,
     dir,
+    openPage,
+    teardown$,
     tracking$,
-    openPage
+    pageOpen$
   }
 }
 

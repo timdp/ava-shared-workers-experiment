@@ -96,7 +96,7 @@ test('VPAID unit correctly publishes quartile events', t => {
   const maxEventWaitingTime = 3000 // Maximum time to wait before timeout
 
   return _from(setUpVpaidTest(t, vpaidUrl, adParameters)).pipe(
-    mergeMap(({ tracking$, openPage }) => {
+    mergeMap(({ pageOpen$, tracking$ }) => {
       const duration$ = receiveVpaidCalls(tracking$, 'getAdDuration').pipe(
         map(({ payload: { result } }) => result),
         share()
@@ -172,10 +172,7 @@ test('VPAID unit correctly publishes quartile events', t => {
         )
       )
 
-      return _from(openPage()).pipe(
-        mergeMapTo(_race(succeeding$, failing$)),
-        take(1)
-      )
+      return pageOpen$.pipe(mergeMapTo(_race(succeeding$, failing$)), take(1))
     }),
     map(([duration, history]) => {
       t.true(duration > 0, 'invalid duration reported')

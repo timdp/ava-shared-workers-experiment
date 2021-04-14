@@ -110,7 +110,7 @@
       guestVpaidAd.subscribe((...args) => {
         track('vpaid-event', { name, args })
         const subs = subscribers[name]
-        if (subs == null) {
+        if (subs == null || subs.length === 0) {
           if (name !== 'AdRemainingTimeChange') {
             log(`Not proxying ${name} event, no subscribers`)
           }

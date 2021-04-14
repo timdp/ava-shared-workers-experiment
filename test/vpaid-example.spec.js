@@ -1,26 +1,31 @@
 const test = require('ava')
 const {
-  combineLatest: _combineLatest,
-  from: _from,
-  merge: _merge,
-  race: _race,
-  timer: _timer
+  EMPTY: EMPTY$,
+  combineLatest: $combineLatest,
+  from: $from,
+  merge: $merge,
+  of: $of,
+  race: $race,
+  timer: $timer,
+  throwError: $throwError
 } = require('rxjs')
 const {
+  catchError,
   delay,
   filter,
+  ignoreElements,
+  last,
   map,
   mapTo,
-  materialize,
   mergeMap,
   mergeMapTo,
-  scan,
   share,
   skip,
-  startWith,
   take,
-  tap
+  tap,
+  timeout
 } = require('rxjs/operators')
+const accumulate = require('./util/accumulate')
 const {
   setUpVpaidTest,
   receiveVpaidEvents,
@@ -93,107 +98,194 @@ test('VPAID unit publishes exactly one AdImpression event', async t => {
 
 test('VPAID unit correctly publishes quartile events', t => {
   const maxEventTimeDrift = 1000 // Maximum difference to expected event time
-  const maxEventWaitingTime = 3000 // Maximum time to wait before timeout
+  const maxFirstEventWaitingTime = 2000 // Maximum time before AdVideoStarted
+  const maxQuartileWaitingTime = 3000 // Maximum time to wait between quartiles
 
-  return _from(setUpVpaidTest(t, vpaidUrl, adParameters)).pipe(
+  // Set up the test and turn the resulting promise into a stream. This kicks
+  // off the reactive pipeline.
+  return $from(setUpVpaidTest(t, vpaidUrl, adParameters)).pipe(
     mergeMap(({ pageOpen$, tracking$ }) => {
+      // Stream of ad duration updates. Each emitted value is the last known
+      // duration.
       const duration$ = receiveVpaidCalls(tracking$, 'getAdDuration').pipe(
         map(({ payload: { result } }) => result),
         share()
       )
 
-      const quartileEvents$ = _merge(
+      // Stream of published quartile events. Each emitted value is a tuple
+      // containing the event time and the event name.
+      const quartileEvents$ = $merge(
         ...QUARTILE_EVENT_NAMES.map(name => receiveVpaidEvents(tracking$, name))
       ).pipe(
         take(QUARTILE_EVENT_NAMES.length),
-        scan(
-          (history, { date, payload: { name } }) => [
-            ...history,
-            [date.getTime(), name]
-          ],
-          []
-        ),
-        startWith([]),
+        map(({ date, payload: { name } }) => [date.getTime(), name]),
         share()
       )
 
-      const lastQuartileEvent$ = quartileEvents$.pipe(
-        materialize(),
-        filter(({ kind }) => kind === 'C'),
-        take(1)
+      // Accumulated version of the quartile event stream. Each emitted value
+      // is an array of all events published so far.
+      const quartileEventHistory$ = quartileEvents$.pipe(accumulate(), share())
+
+      // Stream that emits the last event in the stream of histories. The only
+      // emitted value is the full history, containing all expected quartile
+      // events with their timestamp. This will be used for validating time
+      // intervals later on.
+      const fullQuartileEventHistory$ = quartileEventHistory$.pipe(
+        last(),
+        share()
       )
 
-      const succeeding$ = _combineLatest(
-        duration$,
-        quartileEvents$,
-        lastQuartileEvent$
-      )
-
-      const becomingIdle$ = _combineLatest(
-        duration$,
-        quartileEvents$,
-        _timer(0, 100)
-      ).pipe(
-        map(([duration, history]) => {
-          if (!(duration > 0 && history.length > 0)) {
-            return false
+      // Stream that validates that quartiles arrive in the correct order. For
+      // each event received, checks if the event is the next logical one. If
+      // not, throws with an error message that's caught by the generic error
+      // handler. Does not emit any values.
+      const failOnQuartilesOutOfOrder$ = quartileEvents$.pipe(
+        mergeMap(([time, actualName], idx) => {
+          const expectedName = QUARTILE_EVENT_NAMES[idx]
+          if (actualName === expectedName) {
+            return EMPTY$
           }
-          const [lastTime] = history[history.length - 1]
-          const expectedTime = lastTime + (duration * 1000) / 4
-          return Date.now() - expectedTime > maxEventWaitingTime
-        }),
-        filter(Boolean),
+          return $throwError(
+            `Received ${actualName} event instead of ${expectedName}`
+          )
+        })
+      )
+
+      // Stream that validates that quartiles arrive with an acceptable amount
+      // of time in between. For each event received, compares the elapsed time
+      // to the expected amount of time between quartile events, based on the
+      // ad duration. If the deviation is too large, throws with an error
+      // message that's caught by the generic error handler. Does not emit any
+      // values.
+      const failOnQuartileTimeIntervalInvalid$ = $combineLatest(
+        duration$,
+        fullQuartileEventHistory$.pipe(skip(1))
+      ).pipe(
+        mergeMap(([duration, history]) => {
+          const [actualTime, name] = history[history.length - 1]
+          const [prevTime] = history[history.length - 2]
+          const expectedTime =
+            prevTime + ((duration * 1000) / 4) * (history.length - 1)
+          const diff = actualTime - expectedTime
+          if (Math.abs(diff) < maxEventTimeDrift) {
+            return EMPTY$
+          }
+          const kind = diff > 0 ? 'late' : 'early'
+          return $throwError(
+            `${name} event published too ${kind}: received at ${actualTime} while expected at ${expectedTime}, difference is ${diff} ms`
+          )
+        })
+      )
+
+      // Stream that throws if the first quartile event (i.e., AdVideoStart)
+      // does not arrive within the given number of milliseconds. If it does
+      // not arrive, the error is caught by the generic error handler. Does not
+      // emit any values.
+      const failOnFirstQuartileEventTimeout$ = quartileEvents$.pipe(
+        take(1),
+        timeout(maxFirstEventWaitingTime),
+        ignoreElements(),
+        catchError(() =>
+          $throwError(`Timed out waiting for ${QUARTILE_EVENT_NAMES[0]} event`)
+        )
+      )
+
+      // Stream that throws if events after AdVideoStart (i.e., the "real"
+      // quartile events) do not arrive within a certain amount of time. This
+      // is the counterpart to the time interval validation stream in the sense
+      // that that one only detects issues if the events actually arrive,
+      // whereas this one handles the case where events don't arrive at all.
+      // If any event does not arrive, the error is caught by the generic error
+      // handler. Does not emit any values.
+      const failOnSubsequentQuartileEventTimeout$ = $combineLatest(
+        duration$,
+        quartileEventHistory$,
+        $timer(0, 100)
+      ).pipe(
+        filter(([duration]) => duration > 0), // TODO Deal with this better
+        mergeMap(([duration, history]) => {
+          const [prevTime] = history[history.length - 1]
+          const expectedTime = prevTime + (duration * 1000) / 4
+          if (Date.now() - expectedTime < maxQuartileWaitingTime) {
+            return EMPTY$
+          }
+          const expectedName = QUARTILE_EVENT_NAMES[history.length]
+          return $throwError(`Timed out waiting for ${expectedName} event`)
+        })
+      )
+
+      // Stream that throws when AdStopped is published. The error is caught by
+      // the generic error handler. Does not emit any values.
+      const failOnAdStopped$ = receiveVpaidEvent(tracking$, 'AdStopped').pipe(
+        mergeMapTo(
+          $throwError('AdStopped published before final quartile event')
+        )
+      )
+
+      // Stream that throws when the VAST error tracker is requested. The error
+      // is caught by the generic error handler. Does not emit any values.
+      const failOnVastError$ = receiveVastError(tracking$).pipe(
+        mergeMap(code => $throwError(`VAST error tracker fired: ${code}`))
+      )
+
+      // Stream that models test success. The test is considered a success if
+      // all quartile events have been published. Hence, this stream emits once:
+      // when the last quartile event comes in. The value emitted is true, which
+      // is validated below. After that event, it immediately completes.
+      const success$ = quartileEvents$.pipe(last(), mapTo(true))
+
+      // Stream that aggregates all the error cases described above. None of
+      // them emit any values, but if any of them throws, this stream emits
+      // the error message as a value. This is used in the stream below.
+      const firstErrorMessage$ = $merge(
+        failOnQuartilesOutOfOrder$,
+        failOnQuartileTimeIntervalInvalid$,
+        failOnFirstQuartileEventTimeout$,
+        failOnSubsequentQuartileEventTimeout$,
+        failOnAdStopped$,
+        failOnVastError$
+      ).pipe(
+        mergeMap(value =>
+          $throwError(`Unexpected value from error stream: ${value}`)
+        ),
+        catchError(error => $of(error)),
         take(1)
       )
 
-      const adStopped$ = receiveVpaidEvent(tracking$, 'AdStopped')
-
-      const vastError$ = receiveVastError(tracking$)
-
-      const failing$ = _race(
-        [
-          becomingIdle$.pipe(
-            mapTo('Timed out waiting for next quartile event')
-          ),
-          adStopped$.pipe(mapTo('AdStopped published before quartile events')),
-          vastError$.pipe(map(code => `VAST error tracker fired: ${code}`))
-        ].map(obs =>
-          _combineLatest(obs, quartileEvents$).pipe(
-            tap(([errorMessage, history]) => {
-              const historyStr =
-                history.length > 0
-                  ? history
-                    .map(([time, name]) => `${name} at ${time}`)
-                    .join(', ')
-                  : '(no events)'
-              t.fail(`${errorMessage}, history: ${historyStr}`)
-            })
-          )
-        )
+      // Stream that appends the partial quartile event history to the first
+      // error that occurs. The first and only event is a combination of the
+      // first error (if any) and the last known quartile event history at that
+      // point in time, for diagnostic purposes.
+      const failure$ = $combineLatest(
+        firstErrorMessage$,
+        quartileEventHistory$
+      ).pipe(
+        mergeMap(([errorMessage, history]) => {
+          const historyStr =
+            history.length > 0
+              ? history.map(([time, name]) => `${name} at ${time}`).join(', ')
+              : '(no events)'
+          return $throwError(`${errorMessage} - history: ${historyStr}`)
+        })
       )
 
-      return pageOpen$.pipe(mergeMapTo(_race(succeeding$, failing$)), take(1))
+      // Subscribe to the page-opening stream, and when the page is available,
+      // wait for either success (true is emitted) or error (the stream throws).
+      return pageOpen$.pipe(mergeMapTo($race(success$, failure$)), take(1))
     }),
-    map(([duration, history]) => {
-      t.true(duration > 0, 'invalid duration reported')
-
-      t.deepEqual(
-        history.map(([date, name]) => name),
-        QUARTILE_EVENT_NAMES,
-        'events arrived out of order'
-      )
-
-      const startTime = history[0][0]
-      for (let quartile = 1; quartile <= 4; ++quartile) {
-        const [actualTime, name] = history[quartile]
-        const expectedTime = startTime + ((duration * 1000) / 4) * quartile
-        const diff = actualTime - expectedTime
-        const type = diff > 0 ? 'late' : 'early'
-        t.true(
-          Math.abs(diff) < maxEventTimeDrift,
-          `${name} event published too ${type}: received at ${actualTime} while expected at ${expectedTime}, difference is ${diff} ms`
-        )
-      }
+    take(1),
+    tap(result => {
+      // An event came in. It must be true because that is the only value
+      // emitted. Hence, t.pass() would also work here. For good measure, have
+      // AVA confirm that it's actually true.
+      t.true(result)
+    }),
+    catchError(errorMessage => {
+      // An error was thrown somewhere in the pipeline. It should come from any
+      // of the failure streams, which all throw a human-readable message
+      // that explains why validation failed. Just pass that on to AVA.
+      t.fail(errorMessage)
+      return EMPTY$
     })
   )
 })

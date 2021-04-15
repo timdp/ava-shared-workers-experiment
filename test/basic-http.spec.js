@@ -8,7 +8,7 @@ test('browser loads iframe source', async t => {
   const dir = await httpd.hostDir(t, {
     path: fixturePath
   })
-  const receivingIframeSrc = dir.expectRequest(t, {
+  const receivingIframeSrc = dir.expectRequest({
     filename: 'iframe.html'
   })
   await browser.openPage(t, {
@@ -23,12 +23,11 @@ test('browser loads image with query string', async t => {
   const secret = 'Testing, #123.'
   const dir = await httpd.hostDir(t, {
     path: fixturePath,
-    templates: ['*.html'],
     templateVars: {
       secret
     }
   })
-  const receivingImage = dir.expectRequest(t, {
+  const receivingImage = dir.expectRequest({
     filename: 'image.jpg'
   })
   await browser.openPage(t, {

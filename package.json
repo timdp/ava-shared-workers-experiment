@@ -17,6 +17,7 @@
     "fastify-cors": "^5.2.0",
     "firefox-location": "^1.0.2",
     "globby": "^11.0.3",
+    "js-yaml": "^4.1.0",
     "micromatch": "^4.0.2",
     "mime-types": "^2.1.30",
     "ngrok": "^4.0.0",

@@ -1,5 +1,5 @@
 const debug = require('debug')('browsertest:test:vpaid')
-const { defer: _defer, from: _from } = require('rxjs')
+const { defer: $defer, from: $from } = require('rxjs')
 const { filter, ignoreElements, map, take, tap } = require('rxjs/operators')
 const browser = require('../../lib/browser')
 const httpd = require('../../lib/httpd')
@@ -8,9 +8,9 @@ const receiveTeardown = require('../../lib/util/receive-teardown')
 
 const ofType = desiredType => filter(({ type }) => type === desiredType)
 
-const receiveTracking = (t, dir) =>
+const receiveTracking = dir =>
   dir
-    .expectRequests(t, {
+    .expectRequests({
       filename: 'track'
     })
     .pipe(
@@ -44,14 +44,13 @@ const setUpVpaidTest = async (t, vpaidUrl, adParameters) => {
   const fixturePath = getFixturePath('ima-player-vpaid-spy')
   const dir = await httpd.hostDir(t, {
     path: fixturePath,
-    templates: ['vast.xml'],
     templateVars: {
       vpaidUrl,
       adParameters,
       debug: debug.enabled
     }
   })
-  const tracking$ = receiveTracking(t, dir)
+  const tracking$ = receiveTracking(dir)
   if (debug.enabled) {
     proxyLogs(tracking$)
   }
@@ -60,7 +59,7 @@ const setUpVpaidTest = async (t, vpaidUrl, adParameters) => {
       url: dir.getFileUrl('index.html')
     })
   }
-  const pageOpen$ = _defer(() => _from(openPage()))
+  const pageOpen$ = $defer(() => $from(openPage()))
   return {
     dir,
     openPage,

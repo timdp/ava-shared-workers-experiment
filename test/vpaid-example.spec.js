@@ -98,7 +98,7 @@ test('VPAID unit publishes exactly one AdImpression event', async t => {
 
 test('VPAID unit correctly publishes quartile events', t => {
   const maxEventTimeDrift = 1000 // Maximum difference to expected event time
-  const maxFirstEventWaitingTime = 2000 // Maximum time before AdVideoStarted
+  const maxFirstEventWaitingTime = 2000 // Maximum time before AdVideoStart
   const maxQuartileWaitingTime = 3000 // Maximum time to wait between quartiles
 
   // Set up the test and turn the resulting promise into a stream. This kicks

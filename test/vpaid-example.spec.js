@@ -172,7 +172,8 @@ test('VPAID unit correctly publishes quartile events', t => {
           }
           const kind = diff > 0 ? 'late' : 'early'
           return $throwError(
-            `${name} event published too ${kind}: received at ${actualTime} while expected at ${expectedTime}, difference is ${diff} ms`
+            `${name} event published too ${kind}: received at ${actualTime} ` +
+              `while expected at ${expectedTime}, difference is ${diff} ms`
           )
         })
       )
@@ -282,8 +283,8 @@ test('VPAID unit correctly publishes quartile events', t => {
     }),
     catchError(errorMessage => {
       // An error was thrown somewhere in the pipeline. It should come from any
-      // of the failure streams, which all throw a human-readable message
-      // that explains why validation failed. Just pass that on to AVA.
+      // of the failure streams, which all throw a human-readable message that
+      // explains why validation failed. Just pass that on to AVA.
       t.fail(errorMessage)
       return EMPTY$
     })

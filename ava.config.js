@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   nonSemVerExperiments: {
     sharedWorkers: true
   },

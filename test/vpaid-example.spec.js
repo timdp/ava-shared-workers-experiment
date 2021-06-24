@@ -7,7 +7,8 @@ const {
   of: $of,
   race: $race,
   timer: $timer,
-  throwError: $throwError
+  throwError: $throwError,
+  firstValueFrom
 } = require('rxjs')
 const {
   catchError,
@@ -54,11 +55,10 @@ test('VPAID unit publishes AdImpression event', async t => {
     adParameters
   )
 
-  const receivingAdImpression = receiveVpaidEvent(
-    tracking$,
-    'AdImpression'
-  ).toPromise()
-  const receivingVastError = receiveVastError(tracking$).toPromise()
+  const receivingAdImpression = firstValueFrom(
+    receiveVpaidEvent(tracking$, 'AdImpression')
+  )
+  const receivingVastError = firstValueFrom(receiveVastError(tracking$))
 
   await openPage()
   const errorMessage = await Promise.race([
@@ -79,13 +79,13 @@ test('VPAID unit publishes exactly one AdImpression event', async t => {
 
   const impressions$ = receiveVpaidEvents(tracking$, 'AdImpression')
 
-  const receivingFirstImpressionWithDelay = impressions$
-    .pipe(take(1), delay(waitTime))
-    .toPromise()
-  const receivingSecondImpression = impressions$
-    .pipe(skip(1), take(1))
-    .toPromise()
-  const receivingVastError = receiveVastError(tracking$).toPromise()
+  const receivingFirstImpressionWithDelay = firstValueFrom(
+    impressions$.pipe(take(1), delay(waitTime))
+  )
+  const receivingSecondImpression = firstValueFrom(
+    impressions$.pipe(skip(1), take(1))
+  )
+  const receivingVastError = firstValueFrom(receiveVastError(tracking$))
 
   await openPage()
   const errorMessage = await Promise.race([

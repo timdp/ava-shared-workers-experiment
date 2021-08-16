@@ -1,10 +1,10 @@
 const debug = require('debug')('browsertest:test:vpaid')
 const { defer: $defer, from: $from } = require('rxjs')
 const { filter, ignoreElements, map, take, tap } = require('rxjs/operators')
-const browser = require('../../lib/browser')
-const httpd = require('../../lib/httpd')
+const { BrowserFacade } = require('../../lib/browser/browser')
+const { HttpdFacade } = require('../../lib/httpd/httpd')
+
 const getFixturePath = require('./get-fixture-path')
-const receiveTeardown = require('../../lib/util/receive-teardown')
 
 const ofType = desiredType => filter(({ type }) => type === desiredType)
 
@@ -39,10 +39,15 @@ const proxyLogs = tracking$ =>
     )
     .subscribe()
 
-const setUpVpaidTest = async (t, vpaidUrl, adParameters) => {
-  const teardown$ = receiveTeardown(t)
+const setUpVpaidTest = async (hooks, vpaidUrl, adParameters) => {
+  const browser = new BrowserFacade()
+  const httpd = new HttpdFacade()
+  hooks.teardown$.subscribe(() => {
+    browser.end()
+    httpd.end()
+  })
   const fixturePath = getFixturePath('ima-player-vpaid-spy')
-  const dir = await httpd.hostDir(t, {
+  const dir = await httpd.hostDir(hooks, {
     path: fixturePath,
     templateVars: {
       vpaidUrl,
@@ -55,7 +60,7 @@ const setUpVpaidTest = async (t, vpaidUrl, adParameters) => {
     proxyLogs(tracking$)
   }
   const openPage = async () => {
-    await browser.openPage(t, {
+    await browser.openPage(hooks, {
       url: dir.getFileUrl('index.html')
     })
   }
@@ -63,7 +68,6 @@ const setUpVpaidTest = async (t, vpaidUrl, adParameters) => {
   return {
     dir,
     openPage,
-    teardown$,
     tracking$,
     pageOpen$
   }

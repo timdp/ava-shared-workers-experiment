@@ -1,4 +1,3 @@
-const test = require('ava')
 const {
   EMPTY: EMPTY$,
   combineLatest: $combineLatest,
@@ -26,6 +25,7 @@ const {
   tap,
   timeout
 } = require('rxjs/operators')
+const { wrapTest } = require('../lib/util/test-wrapper')
 const accumulate = require('./util/accumulate')
 const {
   setUpVpaidTest,
@@ -48,9 +48,9 @@ const vpaidUrl =
 const adParameters =
   '{ "buttonForegroundColor": "white", "buttonBackgroundColor": "black" }'
 
-test('VPAID unit publishes AdImpression event', async t => {
+wrapTest('VPAID unit publishes AdImpression event', async hooks => {
   const { tracking$, openPage } = await setUpVpaidTest(
-    t,
+    hooks,
     vpaidUrl,
     adParameters
   )
@@ -65,14 +65,14 @@ test('VPAID unit publishes AdImpression event', async t => {
     receivingAdImpression.then(() => false),
     receivingVastError.then(code => `VAST error tracker fired: ${code}`)
   ])
-  t.false(errorMessage)
+  expect(errorMessage).toBe(false)
 })
 
-test('VPAID unit publishes exactly one AdImpression event', async t => {
+wrapTest('VPAID unit publishes exactly one AdImpression event', async hooks => {
   const waitTime = 2000 // How long to wait for second impression event
 
   const { tracking$, openPage } = await setUpVpaidTest(
-    t,
+    hooks,
     vpaidUrl,
     adParameters
   )
@@ -93,17 +93,19 @@ test('VPAID unit publishes exactly one AdImpression event', async t => {
     receivingSecondImpression.then(() => 'Multiple AdImpressions received'),
     receivingVastError.then(code => `VAST error tracker fired: ${code}`)
   ])
-  t.false(errorMessage)
+  expect(errorMessage).toBe(false)
 })
 
-test('VPAID unit correctly publishes quartile events', t => {
+wrapTest('VPAID unit correctly publishes quartile events', async hooks => {
   const maxEventTimeDrift = 1000 // Maximum difference to expected event time
   const maxFirstEventWaitingTime = 2000 // Maximum time before AdVideoStart
   const maxQuartileWaitingTime = 3000 // Maximum time to wait between quartiles
 
   // Set up the test and turn the resulting promise into a stream. This kicks
   // off the reactive pipeline.
-  return $from(setUpVpaidTest(t, vpaidUrl, adParameters)).pipe(
+  const resultStream = $from(
+    setUpVpaidTest(hooks, vpaidUrl, adParameters)
+  ).pipe(
     mergeMap(({ pageOpen$, tracking$ }) => {
       // Stream of ad duration updates. Each emitted value is the last known
       // duration.
@@ -273,20 +275,8 @@ test('VPAID unit correctly publishes quartile events', t => {
       // Subscribe to the page-opening stream, and when the page is available,
       // wait for either success (true is emitted) or error (the stream throws).
       return pageOpen$.pipe(mergeMapTo($race(success$, failure$)), take(1))
-    }),
-    take(1),
-    tap(result => {
-      // An event came in. It must be true because that is the only value
-      // emitted. Hence, t.pass() would also work here. For good measure, have
-      // AVA confirm that it's actually true.
-      t.true(result)
-    }),
-    catchError(errorMessage => {
-      // An error was thrown somewhere in the pipeline. It should come from any
-      // of the failure streams, which all throw a human-readable message that
-      // explains why validation failed. Just pass that on to AVA.
-      t.fail(errorMessage)
-      return EMPTY$
     })
   )
+  const result = await firstValueFrom(resultStream)
+  expect(result).toBe(true)
 })

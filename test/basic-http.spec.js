@@ -1,27 +1,39 @@
-const test = require('ava')
-const browser = require('../lib/browser')
-const httpd = require('../lib/httpd')
+const { BrowserFacade } = require('../lib/browser/browser')
+const { HttpdFacade } = require('../lib/httpd/httpd')
+const { wrapTest } = require('../lib/util/test-wrapper')
 const getFixturePath = require('./util/get-fixture-path')
 
-test('browser loads iframe source', async t => {
+let browser = null
+let httpd = null
+
+beforeAll(() => {
+  browser = new BrowserFacade()
+  httpd = new HttpdFacade()
+})
+
+afterAll(() => {
+  browser.end()
+  httpd.end()
+})
+
+wrapTest('browser loads iframe source', async hooks => {
   const fixturePath = getFixturePath('iframe')
-  const dir = await httpd.hostDir(t, {
+  const dir = await httpd.hostDir(hooks, {
     path: fixturePath
   })
   const receivingIframeSrc = dir.expectRequest({
     filename: 'iframe.html'
   })
-  await browser.openPage(t, {
+  await browser.openPage(hooks, {
     url: dir.getFileUrl('index.html')
   })
   await receivingIframeSrc
-  t.pass()
 })
 
-test('browser loads image with query string', async t => {
+wrapTest('browser loads image with query string', async hooks => {
   const fixturePath = getFixturePath('image-with-query-string')
   const secret = 'Testing, #123.'
-  const dir = await httpd.hostDir(t, {
+  const dir = await httpd.hostDir(hooks, {
     path: fixturePath,
     templateVars: {
       secret
@@ -30,9 +42,9 @@ test('browser loads image with query string', async t => {
   const receivingImage = dir.expectRequest({
     filename: 'image.jpg'
   })
-  await browser.openPage(t, {
+  await browser.openPage(hooks, {
     url: dir.getFileUrl('index.html')
   })
   const response = await receivingImage
-  t.is(response.url.searchParams.get('secret'), secret)
+  expect(response.url.searchParams.get('secret')).toBe(secret)
 })

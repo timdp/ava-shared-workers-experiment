@@ -1,6 +1,6 @@
 const { BrowserFacade } = require('../lib/browser/browser')
 const { HttpdFacade } = require('../lib/httpd/httpd')
-const { wrapTest } = require('../lib/util/test-wrapper')
+const { safeTest } = require('./util/test-wrapper')
 const getFixturePath = require('./util/get-fixture-path')
 
 let browser = null
@@ -16,7 +16,7 @@ afterAll(() => {
   httpd.end()
 })
 
-wrapTest('browser loads iframe source', async hooks => {
+safeTest('browser loads iframe source', async hooks => {
   const fixturePath = getFixturePath('iframe')
   const dir = await httpd.hostDir(hooks, {
     path: fixturePath
@@ -30,7 +30,7 @@ wrapTest('browser loads iframe source', async hooks => {
   await receivingIframeSrc
 })
 
-wrapTest('browser loads image with query string', async hooks => {
+safeTest('browser loads image with query string', async hooks => {
   const fixturePath = getFixturePath('image-with-query-string')
   const secret = 'Testing, #123.'
   const dir = await httpd.hostDir(hooks, {

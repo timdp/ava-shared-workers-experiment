@@ -1,6 +1,6 @@
 const { BrowserFacade } = require('../lib/browser/browser')
 const { HttpdFacade } = require('../lib/httpd/httpd')
-const { wrapTest } = require('../lib/util/test-wrapper')
+const { safeTest } = require('./util/test-wrapper')
 const getFixturePath = require('./util/get-fixture-path')
 
 let browser = null
@@ -16,7 +16,7 @@ afterAll(() => {
   httpd.end()
 })
 
-wrapTest(
+safeTest(
   'IMA SDK loads VAST tag and dispatches VAST impression',
   async hooks => {
     const fixturePath = getFixturePath('ima-player-vast-tracking')

@@ -1,6 +1,6 @@
 const { Subject } = require('rxjs')
 
-const wrapTest = (description, body) => {
+const safeTest = (description, body) => {
   test(description, async () => {
     const hooks = {
       teardown$: new Subject()
@@ -11,4 +11,4 @@ const wrapTest = (description, body) => {
   })
 }
 
-module.exports = { wrapTest }
+module.exports = { safeTest }

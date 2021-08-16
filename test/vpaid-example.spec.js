@@ -22,10 +22,9 @@ const {
   share,
   skip,
   take,
-  tap,
   timeout
 } = require('rxjs/operators')
-const { wrapTest } = require('../lib/util/test-wrapper')
+const { safeTest } = require('./util/test-wrapper')
 const accumulate = require('./util/accumulate')
 const {
   setUpVpaidTest,
@@ -48,7 +47,7 @@ const vpaidUrl =
 const adParameters =
   '{ "buttonForegroundColor": "white", "buttonBackgroundColor": "black" }'
 
-wrapTest('VPAID unit publishes AdImpression event', async hooks => {
+safeTest('VPAID unit publishes AdImpression event', async hooks => {
   const { tracking$, openPage } = await setUpVpaidTest(
     hooks,
     vpaidUrl,
@@ -68,7 +67,7 @@ wrapTest('VPAID unit publishes AdImpression event', async hooks => {
   expect(errorMessage).toBe(false)
 })
 
-wrapTest('VPAID unit publishes exactly one AdImpression event', async hooks => {
+safeTest('VPAID unit publishes exactly one AdImpression event', async hooks => {
   const waitTime = 2000 // How long to wait for second impression event
 
   const { tracking$, openPage } = await setUpVpaidTest(
@@ -96,7 +95,7 @@ wrapTest('VPAID unit publishes exactly one AdImpression event', async hooks => {
   expect(errorMessage).toBe(false)
 })
 
-wrapTest('VPAID unit correctly publishes quartile events', async hooks => {
+safeTest('VPAID unit correctly publishes quartile events', async hooks => {
   const maxEventTimeDrift = 1000 // Maximum difference to expected event time
   const maxFirstEventWaitingTime = 2000 // Maximum time before AdVideoStart
   const maxQuartileWaitingTime = 3000 // Maximum time to wait between quartiles
